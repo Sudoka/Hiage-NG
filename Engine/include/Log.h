@@ -27,5 +27,17 @@ namespace Hiage
         private:
             static std::map<std::string, Log> logs;
     };
+
+    class ConsoleLog : public Log
+    {
+        public:
+            ConsoleLog();
+            virtual ~ConsoleLog();
+
+            virtual void Write(LogSeverity severity, std::string module, std::string message);
+
+        protected:
+        private:
+    };
 }
 #endif // LOG_H

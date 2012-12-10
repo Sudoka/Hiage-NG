@@ -13,6 +13,12 @@ Vector::Vector(double x, double y)
     this->x[1] = y; 
 }
 
+Vector::Vector(const Vector& v)
+{
+    this->x[0] = v.x[0];
+    this->x[1] = v.x[1];
+}
+
 Vector::~Vector()
 {
 }

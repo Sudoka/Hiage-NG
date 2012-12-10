@@ -12,7 +12,7 @@ namespace Hiage
     class SpriteLoader : public ResourceLoader<SpriteDescriptor>
     {
         public:
-            SpriteDescriptor LoadResource(std::string filename, std::string name) const;
+            virtual SpriteDescriptor LoadResource(std::string filename, std::string name) const;
     };
 }
 #endif

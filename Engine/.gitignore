@@ -1,3 +1,4 @@
+src/third-party/libxml2-2.7.2
 *.swp
 bin
 obj

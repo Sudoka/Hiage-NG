@@ -1,6 +1,7 @@
 #ifndef GAME_H_INCLUDED
 #define GAME_H_INCLUDED
 
+#include <boost/filesystem.hpp>
 #include <memory>
 #include <vector>
 #include <string>

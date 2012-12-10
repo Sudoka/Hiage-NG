@@ -12,7 +12,7 @@ namespace Hiage
     class TilesetLoader : public ResourceLoader<Tileset>
     {
         public:
-            Tileset LoadResource(std::string filename, std::string name) const;
+            virtual Tileset LoadResource(std::string filename, std::string name) const;
     };
 }
 #endif

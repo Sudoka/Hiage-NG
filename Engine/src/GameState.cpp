@@ -9,3 +9,7 @@ GameState::~GameState()
 {
     //dtor
 }
+
+void GameState::IssueActivateEvent()
+{
+}

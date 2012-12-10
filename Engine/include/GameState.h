@@ -9,7 +9,7 @@ class GameState
         virtual ~GameState();
 
         void IssueActivateEvent();
-        void Run(double frameTime);
+        virtual void Run(double frameTime) = 0;
 
     protected:
     private:

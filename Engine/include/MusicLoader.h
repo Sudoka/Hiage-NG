@@ -12,7 +12,7 @@ namespace Hiage
     class MusicLoader : public ResourceLoader<Music>
     {
         public:
-            Music LoadResource(std::string filename, std::string name) const;
+            virtual Music LoadResource(std::string filename, std::string name) const;
     };
 }
 #endif

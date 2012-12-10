@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<object id="goomba">
+    <sprites default="default">
+        <sprite id="default">goomba</sprite>
+    </sprites>
+
+    <!-- Physical properties -->
+    <friction friction="100" />
+    <transform />
+
+    <motion />
+    <gravity />
+    <groundai />
+    <groundenemyinterface />
+
+    <collisionresponse />
+    <physicalobjectcollisionresponse />
+
+    <statemachine default="stand">
+        <state id="stand" />
+        <state id="walk" runspeed="40" />
+        <state id="run" runspeed="40" />
+        <state id="inair" />
+    </statemachine>
+	
+    <speedlimit maxspeed="50" />
+
+    <collidable default="normal">
+        <polygon id="normal">
+            <vertex x="-8" y="8" />
+            <vertex x="8" y="8" />
+            <vertex x="8" y="-8" />
+            <vertex x="-8" y="-8" />
+        </polygon>
+    </collidable>
+</object>

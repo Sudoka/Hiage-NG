@@ -1,5 +1,11 @@
 #include "TextureLoader.h"
 using namespace Hiage;
+using namespace std;
+
+Texture TextureLoader::LoadResource(string filename, string name) const
+{
+    return Texture();
+}
 
 ///// Creates an OpenGL texture from an image.
 //Texture LoadResource(string filename, string name)
