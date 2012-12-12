@@ -11,7 +11,7 @@ CXX=g++
 
 OBJ=$(patsubst src/%.cpp,obj/%.o,$(shell ls src/*.cpp))
 
-LIBXML=lib/libxml2.a
+LIBXML=lib/libxml2.so
 
 THIRDPARTY=$(LIBXML)
 
@@ -20,18 +20,18 @@ all:$(OUTPUT)
 clean:
 	rm -r bin obj
 
-$(LIBXML):
-	rm -rf src/third-party/libxml2-2.7.2 && cd src/third-party/ && tar -xzf libxml2-2.7.2.tar.gz && cd libxml2-2.7.2 && ./configure && $(MAKE)
-	cp src/third-party/libxml2-2.7.2/.libs/libxml2.a lib
+purge: clean
+	rm -r lib src/third-party/libxml2-2.7.2
 
-obj/%.o:src/%.cpp obj
+$(LIBXML):
+	@mkdir lib
+	rm -rf src/third-party/libxml2-2.7.2 && cd src/third-party/ && tar -xzf libxml2-2.7.2.tar.gz && cd libxml2-2.7.2 && ./configure && $(MAKE)
+	cp src/third-party/libxml2-2.7.2/.libs/libxml2.so lib
+
+obj/%.o:src/%.cpp 
+	@mkdir -p obj
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-obj:
-	mkdir obj
-
-bin:
-	mkdir bin
-
-$(OUTPUT): $(OBJ) $(THIRDPARTY) bin
+$(OUTPUT): $(OBJ) $(THIRDPARTY) 
+	@mkdir -p bin
 	$(CXX) $(LDFLAGS) -o $(OUTPUT) $(OBJ) $(LIBXML) $(LDLIBS)

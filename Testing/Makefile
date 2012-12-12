@@ -21,14 +21,10 @@ clean:
 ../Engine/bin/libhiage.a:
 	$(MAKE) -C ../Engine
 
-obj:
-	mkdir obj
-
-bin:
-	mkdir bin
-
-obj/%.o:src/%.cpp obj
+obj/%.o:src/%.cpp
+	@mkdir -p obj
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OUTPUT): $(OBJ) $(THIRDPARTY) bin
+$(OUTPUT): $(OBJ) $(THIRDPARTY) 
+	@mkdir -p bin
 	$(CXX) $(LDFLAGS) -o $(OUTPUT) $(OBJ) $(LDLIBS) 

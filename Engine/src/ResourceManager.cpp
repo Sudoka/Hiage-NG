@@ -1,6 +1,7 @@
 #include <string>
 #include <map>
 
+#include <boost/format.hpp>
 #include <boost/filesystem.hpp>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
@@ -20,12 +21,13 @@
 namespace bf = boost::filesystem;
 using namespace std;
 using namespace Hiage;
+using boost::format;
 
-xmlDocPtr ParseXmlFile(const bf::path& p);
-vector<bf::path> GetXmlFiles(const bf::path& p);
-xmlNodePtr SelectSingleNode(xmlXPathContextPtr context, string xpath);
-xmlNodeSetPtr SelectNodes(xmlXPathContextPtr context, string xpath);
-string GetAttributeValue(xmlNodePtr node, string name);
+xmlDocPtr ParseXmlFile(const bf::path& p, Log& log);
+vector<bf::path> GetXmlFiles(const bf::path& p, Log& log);
+xmlNodePtr SelectSingleNode(xmlXPathContextPtr context, string xpath, Log& log);
+xmlNodeSetPtr SelectNodes(xmlXPathContextPtr context, string xpath, Log& log);
+string GetAttributeValue(xmlNodePtr node, string name, Log& log);
 
 template<class T>
 Resource<T> CreateResource(string filename, string name)
@@ -34,12 +36,14 @@ Resource<T> CreateResource(string filename, string name)
 }
 
 template<class V> 
-bool InsertResource(ResourceDictionary<V> dict, string name, string filename)
+bool InsertResource(ResourceDictionary<V> dict, string filename, string name, Log& log)
 {
+    log << Debug << "ResourceManager" << "Inserting resource with ID " << name << ", filename " << filename << endl;
     if (dict.find(name) != dict.end())
+    {
+        log << Warning << "ResourceManager" <<  "Resource with name \"" << name << "\" already added. Ignored." << endl;
         return false;
-
-        //log.Write(Warning, "ResourceManager", "Resource with name \"" + name + "\" already added. Ignored.");
+    }
     dict.insert(make_pair(name, CreateResource<V>(filename, name))); 
     return true;
 }
@@ -79,12 +83,13 @@ void ResourceManager::LoadResources(string path)
     if (!bf::exists(p))
         throw FileNotFoundException(string("Directory does not exist: ") + path);
 
-    vector<bf::path> xmlFiles = GetXmlFiles(p);
+    vector<bf::path> xmlFiles = GetXmlFiles(p, log);
     LoadResourceFiles(xmlFiles);
 }
 
 void ResourceManager::LoadResourceFiles(vector<bf::path> files)
 {
+    log << "ResourceManager" << "Loading " << files.size() << " resource files..." << endl;
     xmlInitParser();
 
     for (auto& f : files)
@@ -95,10 +100,9 @@ void ResourceManager::LoadResourceFiles(vector<bf::path> files)
 
 void ResourceManager::LoadResourceFile(bf::path file)
 {
-    xmlDocPtr document = ParseXmlFile(file);
+    xmlDocPtr document = ParseXmlFile(file, log);
     xmlXPathContextPtr context = xmlXPathNewContext(document);
-    
-    xmlNodePtr rootNode = SelectSingleNode(context, "/*");
+    xmlNodePtr rootNode = SelectSingleNode(context, "/*", log);
     if (rootNode == NULL)
         throw runtime_error("Invalid XML: " + file.string() + " has no top-level element. Is it empty?");
 
@@ -110,20 +114,19 @@ void ResourceManager::LoadResourceFile(bf::path file)
 
 void ResourceManager::LoadObjectXml(xmlDocPtr doc, const bf::path& file)
 {
-    xmlNodePtr root = SelectSingleNode(xmlXPathNewContext(doc), "/*");
-    string id = GetAttributeValue(root, "id");
-    string name = GetAttributeValue(root, "name");
+    xmlNodePtr root = SelectSingleNode(xmlXPathNewContext(doc), "/*", log);
+    string id = GetAttributeValue(root, "id", log);
 
     if (id == "sprite")
-        InsertResource(sprites, file.string(), name);
+        InsertResource(sprites, file.string(), id, log);
     else if (id == "tileset")
-        InsertResource(tilesets, file.string(), name);
+        InsertResource(tilesets, file.string(), id, log);
     else if (id == "map")
-        InsertResource(tilemaps, file.string(), name);
+        InsertResource(tilemaps, file.string(), id, log);
     else if (id == "object")
-        InsertResource(objects, file.string(), name);
+        InsertResource(objects, file.string(), id, log);
     else
-        log.Write(Warning, "ResourceManager", "Unknown resource type: \"" + name + "\". Resource ignored.");
+        log << Warning << "ResourceManager" << "Unknown resource type: \"" << (const char*)root->name << "\". Resource ignored.";
 }
 
 /// <summary>
@@ -135,23 +138,23 @@ void ResourceManager::LoadResourcesXml(xmlDocPtr doc, const bf::path& filePath)
 
     log.Write("ResourceManager", "Loading resources from \"" + filePath.string() + "\" in directory " + directory.string());
 
-    xmlNodeSetPtr nodes = SelectNodes(xmlXPathNewContext(doc), "/resources/resource");
+    xmlNodeSetPtr nodes = SelectNodes(xmlXPathNewContext(doc), "/resources/resource", log);
 
     //Read resource entries
     for (int i = 0; i < nodes->nodeNr; i++)
     {
         xmlNodePtr node = nodes->nodeTab[i];
 
-        string type = GetAttributeValue(node, "type");
-        string name = GetAttributeValue(node, "name");
-        string file = (directory / GetAttributeValue(node, "path")).string();
+        string type = GetAttributeValue(node, "type", log);
+        string name = GetAttributeValue(node, "name", log);
+        string file = (directory / GetAttributeValue(node, "path", log)).string();
 
         if (type == "sound")
-            InsertResource(sounds, file, name);
+            InsertResource(sounds, file, name, log);
         else if (type == "music")
-            InsertResource(music, file, name);
+            InsertResource(music, file, name, log);
         else if (type == "texture")
-            InsertResource(textures, file, name);
+            InsertResource(textures, file, name, log);
 
 //        else if (type == "font")
 //        {
@@ -252,17 +255,21 @@ const Music& ResourceManager::GetMusic(string name)
 //}
 
 //Private helper functions
-vector<bf::path> GetXmlFiles(const bf::path& p)
+vector<bf::path> GetXmlFiles(const bf::path& p, Log& log)
 {
+    log << "ResourceManager" << "Searching for resource files under " << p.string() << endl;
     vector<bf::path> files;
     bf::directory_iterator end;
     for (bf::directory_iterator iter(p); iter != end; ++iter) 
     {
-        if (bf::is_regular_file(iter->path()) && bf::extension(iter->path()) == "xml")
+        if (bf::is_regular_file(iter->path()) && bf::extension(iter->path()) == ".xml")
+        {
             files.push_back(iter->path());
+            log << "ResourceManager" << "Found resource XML " << iter->path().string() << endl;
+        }
         else if(bf::is_directory(iter->path()))
         {
-            vector<bf::path> moreFiles = GetXmlFiles(iter->path());
+            vector<bf::path> moreFiles = GetXmlFiles(iter->path(), log);
             files.insert(files.end(), moreFiles.begin(), moreFiles.end());
         }
     }
@@ -270,18 +277,22 @@ vector<bf::path> GetXmlFiles(const bf::path& p)
     return files;
 }
 
-xmlDocPtr ParseXmlFile(const bf::path& p)
+xmlDocPtr ParseXmlFile(const bf::path& p, Log& log)
 {
-    xmlDocPtr doc = xmlParseFile(p.string().c_str());
-
+    string s = p.string();
+    log << Debug << "ResourceManager" << "Parsing XML " << s << endl;
+    xmlDocPtr doc = xmlParseFile(s.c_str());
     if (doc == NULL)
         throw runtime_error(string("Failed to parse XML document ") + p.string());
+
+    log << Debug << "ResourceManager" << "Parsing completed with non-null result" << endl;
 
     return doc;
 }
 
-xmlNodePtr SelectSingleNode(xmlXPathContextPtr context, string xpath)
+xmlNodePtr SelectSingleNode(xmlXPathContextPtr context, string xpath, Log& log)
 {
+    log << Trace << "ResourceManager" << "SelectSingleNode on " << xpath << endl;
     if (context == NULL)
         return NULL;
 
@@ -296,8 +307,9 @@ xmlNodePtr SelectSingleNode(xmlXPathContextPtr context, string xpath)
     return result->nodesetval->nodeTab[0];
 }
 
-xmlNodeSetPtr SelectNodes(xmlXPathContextPtr context, string xpath)
+xmlNodeSetPtr SelectNodes(xmlXPathContextPtr context, string xpath, Log& log)
 {
+    log << Trace << "ResourceManager" << "SelectNodes on " << xpath << endl;
     if (context == NULL)
         return NULL;
 
@@ -310,8 +322,9 @@ xmlNodeSetPtr SelectNodes(xmlXPathContextPtr context, string xpath)
 
 }
 
-string GetInnerText(xmlDocPtr doc, xmlNodePtr node)
+string GetInnerText(xmlDocPtr doc, xmlNodePtr node, Log& log)
 {
+    log << Trace << "ResourceManager" << "GetInnerText on node " << (const char*)node->name << endl;
     xmlChar* str = xmlNodeListGetString(doc, node, 1);
     string result((char*)str);
     xmlFree(str);
@@ -319,8 +332,9 @@ string GetInnerText(xmlDocPtr doc, xmlNodePtr node)
     return result;
 }
 
-string GetAttributeValue(xmlNodePtr node, string name)
+string GetAttributeValue(xmlNodePtr node, string name, Log& log)
 {
+    log << Trace << "ResourceManager" << "GetAttributeValue " << name << " on node " << (const char*)node->name << endl;
     if (node == NULL)
         throw runtime_error("GetAttributeValue: node cannot be NULL");
 
