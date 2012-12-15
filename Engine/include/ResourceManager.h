@@ -3,7 +3,7 @@
 
 #include <map>
 #include <string>
-#include <libxml/tree.h>
+#include <unordered_map>
 #include "Resource.h"
 
 #include "Texture.h"
@@ -16,12 +16,12 @@
 
 namespace Hiage
 {
-
     class Log;
+    struct ResourceManager_impl;
 
     //aliases
     template <class T>
-    using ResourceDictionary = std::map<std::string, Resource<T>>;
+    using ResourceDictionary = std::unordered_map<std::string, Resource<T>>;
 
     class ResourceManager
     {
@@ -42,21 +42,9 @@ namespace Hiage
 
         protected:
         private:
-            void LoadResourceFiles(std::vector<boost::filesystem::path> files);
-            void LoadResourceFile(boost::filesystem::path path);
-            void LoadResourcesXml(xmlDocPtr resourceXML, const boost::filesystem::path& path);
-            void LoadObjectXml(xmlDocPtr resourceXML, const boost::filesystem::path& path);
-        private:
+            std::unique_ptr<ResourceManager_impl> impl;
             Log& log;
 
-            ResourceDictionary<Texture>	         textures;
-            ResourceDictionary<SpriteDescriptor> sprites;
-            //std::map<std::string, Resource<ISE.FTFont> >  		fonts;
-            ResourceDictionary<Tileset>          tilesets;
-            ResourceDictionary<Sound>            sounds;
-            ResourceDictionary<Music>            music;
-            ResourceDictionary<MapDescriptor>    tilemaps;
-            ResourceDictionary<ObjectDescriptor> objects;
     };
 }
 #endif // RESOURCEMANAGER_H

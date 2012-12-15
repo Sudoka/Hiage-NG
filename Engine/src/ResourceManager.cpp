@@ -5,6 +5,8 @@
 #include <boost/filesystem.hpp>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
+#include <libxml/tree.h>
+#include <unordered_map>
 
 #include "TextureLoader.h"
 #include "SpriteLoader.h"
@@ -36,7 +38,7 @@ Resource<T> CreateResource(string filename, string name)
 }
 
 template<class V> 
-bool InsertResource(ResourceDictionary<V> dict, string filename, string name, Log& log)
+bool InsertResource(ResourceDictionary<V>& dict, string filename, string name, Log& log)
 {
     log << Debug << "ResourceManager" << "Inserting resource with ID " << name << ", filename " << filename << endl;
     if (dict.find(name) != dict.end())
@@ -44,7 +46,9 @@ bool InsertResource(ResourceDictionary<V> dict, string filename, string name, Lo
         log << Warning << "ResourceManager" <<  "Resource with name \"" << name << "\" already added. Ignored." << endl;
         return false;
     }
+    
     dict.insert(make_pair(name, CreateResource<V>(filename, name))); 
+
     return true;
 }
 
@@ -58,14 +62,111 @@ const T& GetResource(ResourceDictionary<T> dict, string name, Log& log, Resource
     Resource<T>& resource = iter->second;
     
     if (!resource.IsLoaded())
+    {
+        log << Debug << "ResourceManager" << "Resource " << name << " was not loaded. Loading it..." << endl;
         resource.Load(resourceLoader);
+    }
 
     return resource.getResource();
 }
 
+struct Hiage::ResourceManager_impl
+{
+
+    ResourceManager_impl(Log& log) : log(log)
+    {
+    }
+
+    void LoadResourceFiles(std::vector<boost::filesystem::path> files)
+    {
+        log << "ResourceManager" << "Loading " << files.size() << " resource files..." << endl;
+        xmlInitParser();
+
+        for (auto& f : files)
+            LoadResourceFile(f);
+
+        xmlCleanupParser();
+    }
+
+    void LoadResourceFile(bf::path file)
+    {
+        xmlDocPtr document = ParseXmlFile(file, log);
+        xmlXPathContextPtr context = xmlXPathNewContext(document);
+        xmlNodePtr rootNode = SelectSingleNode(context, "/*", log);
+        if (rootNode == NULL)
+            throw runtime_error("Invalid XML: " + file.string() + " has no top-level element. Is it empty?");
+
+        if (string("resources") == (char*)rootNode->name)
+            LoadResourcesXml(document, file);
+        else
+            LoadObjectXml(document, file);
+    }
+
+    void LoadResourcesXml(xmlDocPtr doc, const bf::path& filePath)
+    {
+        bf::path directory = filePath.branch_path();
+
+        log.Write("ResourceManager", "Loading resources from \"" + filePath.string() + "\" in directory " + directory.string());
+
+        xmlNodeSetPtr nodes = SelectNodes(xmlXPathNewContext(doc), "/resources/resource", log);
+
+        //Read resource entries
+        for (int i = 0; i < nodes->nodeNr; i++)
+        {
+            xmlNodePtr node = nodes->nodeTab[i];
+
+            string type = GetAttributeValue(node, "type", log);
+            string name = GetAttributeValue(node, "name", log);
+            string file = (directory / GetAttributeValue(node, "path", log)).string();
+
+            if (type == "sound")
+                InsertResource(sounds, file, name, log);
+            else if (type == "music")
+                InsertResource(music, file, name, log);
+            else if (type == "texture")
+                InsertResource(textures, file, name, log);
+
+//            else if (type == "font")
+//                InsertResource(fonts, file, name, log);
+            else
+                log.Write(Warning, "ResourceManager", "Invalid resource type for resource library file: \"" + type + "\". Resource ignored.");
+
+            log.Write("ResourceManager", "Added " + type + " resource \"" + name + "\" with path \"" + file + "\"");
+        }
+    }
+
+    void LoadObjectXml(xmlDocPtr doc, const bf::path& file)
+    {
+        xmlNodePtr root = SelectSingleNode(xmlXPathNewContext(doc), "/*", log);
+        string id = GetAttributeValue(root, "id", log);
+
+        if (id == "sprite")
+            InsertResource(sprites, file.string(), id, log);
+        else if (id == "tileset")
+            InsertResource(tilesets, file.string(), id, log);
+        else if (id == "map")
+            InsertResource(tilemaps, file.string(), id, log);
+        else if (id == "object")
+            InsertResource(objects, file.string(), id, log);
+        else
+            log << Warning << "ResourceManager" << "Unknown resource type: \"" << (const char*)root->name << "\". Resource ignored.";
+    }
+
+    Log& log;
+
+    ResourceDictionary<Texture>	         textures;
+    ResourceDictionary<SpriteDescriptor> sprites;
+    //std::map<std::string, Resource<ISE.FTFont> >  		fonts;
+    ResourceDictionary<Tileset>          tilesets;
+    ResourceDictionary<Sound>            sounds;
+    ResourceDictionary<Music>            music;
+    ResourceDictionary<MapDescriptor>    tilemaps;
+    ResourceDictionary<ObjectDescriptor> objects;
+};
+
 ResourceManager::ResourceManager(Log& log) : log(log)
 {
-    //ctor
+    impl = unique_ptr<ResourceManager_impl>(new ResourceManager_impl(log));
 }
 
 
@@ -84,90 +185,7 @@ void ResourceManager::LoadResources(string path)
         throw FileNotFoundException(string("Directory does not exist: ") + path);
 
     vector<bf::path> xmlFiles = GetXmlFiles(p, log);
-    LoadResourceFiles(xmlFiles);
-}
-
-void ResourceManager::LoadResourceFiles(vector<bf::path> files)
-{
-    log << "ResourceManager" << "Loading " << files.size() << " resource files..." << endl;
-    xmlInitParser();
-
-    for (auto& f : files)
-        LoadResourceFile(f);
-
-    xmlCleanupParser();
-}
-
-void ResourceManager::LoadResourceFile(bf::path file)
-{
-    xmlDocPtr document = ParseXmlFile(file, log);
-    xmlXPathContextPtr context = xmlXPathNewContext(document);
-    xmlNodePtr rootNode = SelectSingleNode(context, "/*", log);
-    if (rootNode == NULL)
-        throw runtime_error("Invalid XML: " + file.string() + " has no top-level element. Is it empty?");
-
-    if (string("resources") == (char*)rootNode->name)
-        LoadResourcesXml(document, file);
-    else
-        LoadObjectXml(document, file);
-}
-
-void ResourceManager::LoadObjectXml(xmlDocPtr doc, const bf::path& file)
-{
-    xmlNodePtr root = SelectSingleNode(xmlXPathNewContext(doc), "/*", log);
-    string id = GetAttributeValue(root, "id", log);
-
-    if (id == "sprite")
-        InsertResource(sprites, file.string(), id, log);
-    else if (id == "tileset")
-        InsertResource(tilesets, file.string(), id, log);
-    else if (id == "map")
-        InsertResource(tilemaps, file.string(), id, log);
-    else if (id == "object")
-        InsertResource(objects, file.string(), id, log);
-    else
-        log << Warning << "ResourceManager" << "Unknown resource type: \"" << (const char*)root->name << "\". Resource ignored.";
-}
-
-/// <summary>
-/// Load resources from a resource XML file.
-/// </summary>
-void ResourceManager::LoadResourcesXml(xmlDocPtr doc, const bf::path& filePath)
-{
-    bf::path directory = filePath.branch_path();
-
-    log.Write("ResourceManager", "Loading resources from \"" + filePath.string() + "\" in directory " + directory.string());
-
-    xmlNodeSetPtr nodes = SelectNodes(xmlXPathNewContext(doc), "/resources/resource", log);
-
-    //Read resource entries
-    for (int i = 0; i < nodes->nodeNr; i++)
-    {
-        xmlNodePtr node = nodes->nodeTab[i];
-
-        string type = GetAttributeValue(node, "type", log);
-        string name = GetAttributeValue(node, "name", log);
-        string file = (directory / GetAttributeValue(node, "path", log)).string();
-
-        if (type == "sound")
-            InsertResource(sounds, file, name, log);
-        else if (type == "music")
-            InsertResource(music, file, name, log);
-        else if (type == "texture")
-            InsertResource(textures, file, name, log);
-
-//        else if (type == "font")
-//        {
-//            if (fonts.find(name) != fonts.end())
-//                log.Write(Warning, "ResourceManager", "Font with name \"" + name + "\" already added. Resource ignored.");
-//            else
-//                fonts[name] = CreateResource<ISE.FTFont>(file, name);
-//        }
-        else
-            log.Write(Warning, "ResourceManager", "Invalid resource type for resource library file: \"" + type + "\". Resource ignored.");
-
-        log.Write("ResourceManager", "Added " + type + " resource with path \"" + file + "\"");
-    }
+    impl->LoadResourceFiles(xmlFiles);
 }
 
 /// <summary>
@@ -176,13 +194,13 @@ void ResourceManager::LoadResourcesXml(xmlDocPtr doc, const bf::path& filePath)
 const Texture& ResourceManager::GetTexture(string name)
 {
     TextureLoader loader;
-    return GetResource<Texture>(textures, name, log, loader);
+    return GetResource<Texture>(impl->textures, name, log, loader);
 }
 
 const SpriteDescriptor& ResourceManager::GetSpriteDescriptor(string name)
 {
     SpriteLoader loader;
-    return GetResource<SpriteDescriptor>(sprites, name, log, loader);
+    return GetResource<SpriteDescriptor>(impl->sprites, name, log, loader);
 }
 
 //const ISE.FTFont& GetFont(string name)
@@ -201,58 +219,32 @@ const SpriteDescriptor& ResourceManager::GetSpriteDescriptor(string name)
 const Tileset& ResourceManager::GetTileset(string name)
 {
     TilesetLoader loader;
-    return GetResource<Tileset>(tilesets, name, log, loader);
+    return GetResource<Tileset>(impl->tilesets, name, log, loader);
 }
 
 const MapDescriptor& ResourceManager::GetMapDescriptor(string name)
 {
     MapLoader loader;
-    return GetResource<MapDescriptor>(tilemaps, name, log, loader);
+    return GetResource<MapDescriptor>(impl->tilemaps, name, log, loader);
 }
 
 const ObjectDescriptor& ResourceManager::GetObjectDescriptor(string name)
 {
     ObjectLoader loader;
-    return GetResource<ObjectDescriptor>(objects, name, log, loader);
+    return GetResource<ObjectDescriptor>(impl->objects, name, log, loader);
 }
 
 const Sound& ResourceManager::GetAudioClip(string name)
 {
     AudioClipLoader loader;
-    return GetResource<Sound>(sounds, name, log, loader);
+    return GetResource<Sound>(impl->sounds, name, log, loader);
 }
 
 const Music& ResourceManager::GetMusic(string name)
 {
     MusicLoader loader;
-    return GetResource<Music>(music, name, log, loader);
+    return GetResource<Music>(impl->music, name, log, loader);
 }
-
-////The list of all tileset names
-//IEnumerable<string> Tilesets
-//{
-//    get
-//    {
-//        return tilesets.Keys;
-//    }
-//}
-//
-////List of all object names
-//IEnumerable<string> Objects
-//{
-//    get
-//    {
-//        return objects.Keys;
-//    }
-//}
-//
-//IEnumerable<string> Textures
-//{
-//    get
-//    {
-//        return textures.Keys;
-//    }
-//}
 
 //Private helper functions
 vector<bf::path> GetXmlFiles(const bf::path& p, Log& log)

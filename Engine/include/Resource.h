@@ -14,6 +14,7 @@ namespace Hiage
             {
                 this->filename = filename;
                 this->name = name;
+                isLoaded = false;
             }
 
             virtual ~Resource()

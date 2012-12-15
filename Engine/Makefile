@@ -5,15 +5,15 @@ LDFLAGS=-g -shared
 LDLIBS=-Llib -lGL -lSDL -lxml2 -lboost_system -lboost_filesystem
 
 #Compiler
-CXXFLAGS=-Iinclude -g -fpic -std=c++11
+CXXFLAGS=-Iinclude $(shell xml2-config --cflags) -g -fpic -std=c++11
 CXX=g++
 #CXX=clang
 
 OBJ=$(patsubst src/%.cpp,obj/%.o,$(shell ls src/*.cpp))
 
-LIBXML=lib/libxml2.so
+#LIBXML=lib/libxml2.so
 
-THIRDPARTY=$(LIBXML)
+#THIRDPARTY=$(LIBXML)
 
 all:$(OUTPUT)
 
@@ -32,6 +32,6 @@ obj/%.o:src/%.cpp
 	@mkdir -p obj
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OUTPUT): $(OBJ) $(THIRDPARTY) 
+$(OUTPUT): $(OBJ) #$(THIRDPARTY) 
 	@mkdir -p bin
-	$(CXX) $(LDFLAGS) -o $(OUTPUT) $(OBJ) $(LIBXML) $(LDLIBS)
+	$(CXX) $(LDFLAGS) -o $(OUTPUT) $(OBJ) $(LDLIBS)
