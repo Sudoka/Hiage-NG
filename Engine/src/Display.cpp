@@ -215,7 +215,7 @@ bool Display::getFullscreen() const
     return flags & SDL_FULLSCREEN;
 }
 
-bool Display::setFullscreen(bool value)
+void Display::setFullscreen(bool value)
 {
     unsigned int flags = SDL_RESIZABLE | SDL_OPENGL | SDL_HWSURFACE;
     if (fullscreen)
@@ -264,7 +264,7 @@ double Display::getZoom() const
     return zoom;
 }
 
-double Display::setZoom(double value)
+void Display::setZoom(double value)
 {
     if (zoom > 0)
         zoom = value;

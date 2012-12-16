@@ -9,11 +9,11 @@ namespace Hiage
 {
     enum LogSeverity
     {
-        Trace,
-        Debug,
-        Info,
-        Warning,
-        Error
+        Trace = 1,
+        Debug = 2,
+        Info = 3,
+        Warning = 4,
+        Error = 5
     };
 
     class Log
@@ -34,6 +34,7 @@ namespace Hiage
             Log& operator<<(std::ostream& (*m) (std::ostream&));
             Log& operator<<(LogSeverity severity);
             
+            void setSeverityLimit(LogSeverity severity);
         protected:
             virtual void WriteToLog(std::string message) = 0;
 
@@ -41,6 +42,7 @@ namespace Hiage
             std::stringstream tokenStream;
             std::string currentModule;
             LogSeverity currentSeverity = Info;
+            LogSeverity severityLimit = Trace;
             int ntokens = 0;
     };
 

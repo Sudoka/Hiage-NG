@@ -45,7 +45,7 @@ namespace Hiage
             double getRenderedCameraY() const;
 
             bool getFullscreen() const;
-            bool setFullscreen(bool value);
+            void setFullscreen(bool value);
 
             //// <value>
             /// Get a reference to the renderer.
@@ -61,7 +61,7 @@ namespace Hiage
             /// Zoom level. How much zoomage.
             /// </value>
             double getZoom() const;
-            double setZoom(double value);
+            void setZoom(double value);
 
             double getRenderedZoom() const;
 

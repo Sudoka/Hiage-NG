@@ -20,4 +20,5 @@ void Timer::Reset()
 
 long Timer::getElapsedMilliseconds()
 {
+    return 0;
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<map id="test_multi">
-	<geometry>
+<map id="testmulti">
+    <geometry>
 		<width>100</width>
 		<height>20</height>
 		<layers>3</layers>
@@ -272,3 +272,4 @@
 		AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 	</tiledata>
 </map>
+

@@ -10,7 +10,7 @@ using namespace std;
 using namespace Hiage;
 
 Game::Game(Log& log, Display& display, InputManager& inputManager, AudioManager& audioManager, ResourceManager& resourceManager) 
-    : log(log), display(display), inputManager(inputManager), audioManager(audioManager), resourceManager(resourceManager)
+    : display(display), resourceManager(resourceManager), inputManager(inputManager), audioManager(audioManager),  log(log)
 {
 //    Events.Quit += new EventHandler<QuitEventArgs>(OnQuit);
 }

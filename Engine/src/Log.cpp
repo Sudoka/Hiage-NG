@@ -15,6 +15,9 @@ Log::~Log()
 
 void Log::Write(LogSeverity severity, std::string module, std::string message)
 {
+    if (severity < severityLimit)
+        return;
+
     stringstream ss;
     switch (severity)
     {
@@ -103,6 +106,8 @@ Log& Log::operator<<(double n)
 Log& Log::operator<<(LogSeverity severity)
 {
     currentSeverity = severity;
+
+    return *this;
 }
 
 Log& Log::operator<<(ostream& (*m)(ostream&))
@@ -114,6 +119,11 @@ Log& Log::operator<<(ostream& (*m)(ostream&))
     currentSeverity = Info;
 
     return *this;
+}
+
+void Log::setSeverityLimit(LogSeverity severity)
+{
+    severityLimit = severity;
 }
 
 ConsoleLog::ConsoleLog()
