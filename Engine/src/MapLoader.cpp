@@ -6,5 +6,5 @@ using namespace Hiage;
 
 MapDescriptor MapLoader::LoadResource(string filename, string name) const
 {
-    return MapDescriptor();
+    return MapDescriptor(name, 128, 128, 8, 32, 0, 0, "grassland");
 }

@@ -7,24 +7,31 @@ LDLIBS=-Llib -lGL -lSDL -lxml2 -lboost_system -lboost_filesystem
 #Compiler
 CXXFLAGS=-Iinclude $(shell xml2-config --cflags) -g -fpic -std=c++11 -Wall -Werror
 CXX=g++
-#CXX=clang
 
-OBJ=$(patsubst src/%.cpp,obj/%.o,$(shell ls src/*.cpp))
-
-#THIRDPARTY=$(LIBXML)
+DEPEND=$(patsubst src/%.cpp,work/%.d,$(shell ls src/*.cpp))
+SRC=$(shell ls src/*.cpp)
+OBJ=$(patsubst src/%.cpp,work/%.o,$(shell ls src/*.cpp))
+HEADERS=$(shell ls include/*.h)
 
 all:$(OUTPUT)
 
 clean:
-	rm -r bin obj
+	rm -rf bin $(OBJ) $(DEPEND)
 
 purge: clean
 	rm -r lib 
 
-obj/%.o:src/%.cpp 
-	@mkdir -p obj
+work/%.o:src/%.cpp 
+	@mkdir -p work
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OUTPUT): $(OBJ) #$(THIRDPARTY) 
+$(OUTPUT): $(OBJ) 
 	@mkdir -p bin
 	$(CXX) $(LDFLAGS) -o $(OUTPUT) $(OBJ) $(LDLIBS)
+
+depend: $(DEPEND)
+
+work/%.d: src/%.cpp
+	$(CXX) $(CXXFLAGS) -MM $< -MT $(patsubst src/%.cpp,work/%.o,$<) > $@
+
+-include $(DEPEND)
